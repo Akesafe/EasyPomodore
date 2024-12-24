@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .timer {
+            font-size: 6rem;
+            margin: 2rem 0;
+            font-weight: bold;
+        }
+
+        .controls button {
+            font-size: 1.2rem;
+            margin: 0.5rem;
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
+            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            opacity: 0.9;
+        }
+
+        .settings {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.2); /* 半透明白色背景 */
+            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
+        }
+
+        .settings div {
+            margin: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings input {
+            width: 100px;
+            padding: 0.3rem;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        .settings input[type="color"] {
+            width: 50px;
+            height: 30px;
+            padding: 0;
+        }
+
+        .toggle-settings {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
+            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .phase-label {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="phase-label" id="phaseLabel">专注时间</div>
+        <div class="timer" id="timer">13:00</div>
+        <div class="controls">
+            <button id="startPause">开始</button>
+            <button id="skip">跳过</button>
+        </div>
+        <button class="toggle-settings" id="toggleSettings">显示设置</button>
+        <div class="settings" id="settings" style="display: none;">
+            <div>
+                <label>专注时间 (分钟):</label>
+                <input type="number" id="focusTime" value="25" min="1">
+            </div>
+            <div>
+                <label>短休息时长 (分钟):</label>
+                <input type="number" id="shortBreakTime" value="5" min="1">
+            </div>
+            <div>
+                <label>长休息时长 (分钟):</label>
+                <input type="number" id="longBreakTime" value="15" min="1">
+            </div>
+            <div>
+                <label>长休息间隔 (次数):</label>
+                <input type="number" id="longBreakInterval" value="4" min="1">
+            </div>
+            <div>
+                <label>专注时字体颜色:</label>
+                <input type="color" id="focusTextColor" value="#000000">
+            </div>
+            <div>
+                <label>专注时背景颜色:</label>
+                <input type="color" id="focusBackColor" value="#8DCDEC">
+            </div>
+            <div>
+                <label>休息时字体颜色:</label>
+                <input type="color" id="breakTextColor" value="#404040">
+            </div>
+            <div>
+                <label>休息时背景颜色:</label>
+                <input type="color" id="breakBackColor" value="#B1ECB8">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素
+        const timer = document.getElementById('timer');
+        const startPauseBtn = document.getElementById('startPause');
+        const skipBtn = document.getElementById('skip');
+        const toggleSettingsBtn = document.getElementById('toggleSettings');
+        const settingsPanel = document.getElementById('settings');
+        const phaseLabel = document.getElementById('phaseLabel');
+
+        // 状态变量
+        let timeLeft = 25 * 60; // 默认13分钟
+        let isRunning = false;
+        let isFocusTime = true;
+        let intervalId = null;
+        let focusCount = 0;
+
+        let wakeLock = null;
+
+// 请求屏幕常亮
+async function requestWakeLock() {
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('屏幕常亮已启用');
+    } catch (err) {
+        console.error(`请求屏幕常亮失败: ${err.name}, ${err.message}`);
+    }
+}
+
+// 释放屏幕常亮
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release().then(() => {
+            console.log('屏幕常亮已释放');
+            wakeLock = null;
+        });
+    }
+}
+
+// 添加事件监听器确保在页面加载时启用屏幕常亮
+document.addEventListener('visibilitychange', () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+// 在开始计时器时启用屏幕常亮
+startPauseBtn.addEventListener('click', () => {
+    if (!isRunning) {
+        requestWakeLock();
+    } else {
+        releaseWakeLock();
+    }
+});
+
+function loadSettings() {
+    const savedSettings = localStorage.getItem('pomodoroSettings');
+    if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        document.getElementById('focusTime').value = settings.focusTime / 60;
+        document.getElementById('shortBreakTime').value = settings.shortBreakTime / 60;
+        document.getElementById('longBreakTime').value = settings.longBreakTime / 60;
+        document.getElementById('longBreakInterval').value = settings.longBreakInterval;
+        document.getElementById('focusTextColor').value = settings.focusTextColor;
+        document.getElementById('focusBackColor').value = settings.focusBackColor;
+        document.getElementById('breakTextColor').value = settings.breakTextColor;
+        document.getElementById('breakBackColor').value = settings.breakBackColor;
+
+        timeLeft = isFocusTime ? settings.focusTime : settings.shortBreakTime;
+    } else {
+        timeLeft = 25 * 60;
+    }
+}
+
+
+function saveSettings(settings) {
+    localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+}
+
+        // 获取设置值
+        function getSettings() {
+            return {
+                focusTime: parseInt(document.getElementById('focusTime').value) * 60,
+                shortBreakTime: parseInt(document.getElementById('shortBreakTime').value) * 60,
+                longBreakTime: parseInt(document.getElementById('longBreakTime').value) * 60,
+                longBreakInterval: parseInt(document.getElementById('longBreakInterval').value),
+                focusTextColor: document.getElementById('focusTextColor').value,
+                focusBackColor: document.getElementById('focusBackColor').value,
+                breakTextColor: document.getElementById('breakTextColor').value,
+                breakBackColor: document.getElementById('breakBackColor').value
+            };
+    saveSettings(settings); // 保存设置
+    return settings;
+        }
+
+        // 更新显示的时间
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 更新颜色和标签
+        function updateColors() {
+            const settings = getSettings();
+            if (isFocusTime) {
+                document.body.style.backgroundColor = settings.focusBackColor;
+                document.body.style.color = settings.focusTextColor;
+                phaseLabel.textContent = "专注时间";
+            } else {
+                document.body.style.backgroundColor = settings.breakBackColor;
+                document.body.style.color = settings.breakTextColor;
+                phaseLabel.textContent = focusCount % settings.longBreakInterval === 0 ? 
+                    "长休息时间" : "短休息时间";
+            }
+        }
+
+        // 切换到下一个阶段
+        function switchPhase() {
+            const settings = getSettings();
+            if (isFocusTime) {
+                focusCount++;
+                isFocusTime = false;
+                if (focusCount % settings.longBreakInterval === 0) {
+                    timeLeft = settings.longBreakTime;
+                } else {
+                    timeLeft = settings.shortBreakTime;
+                }
+            } else {
+                isFocusTime = true;
+                timeLeft = settings.focusTime;
+            }
+            updateColors();
+            updateDisplay();
+        }
+
+        // 播放提示音
+        function playNotification() {
+            const audio = new Audio('data:audio/wav;base64,UklGRl4DAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhRAMAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==');
+            audio.play();
+        }
+
+loadSettings();
+
+        // 初始化颜色
+        updateColors();
+
+        // 开始/暂停计时器
+        startPauseBtn.addEventListener('click', () => {
+            if (isRunning) {
+                clearInterval(intervalId);
+                startPauseBtn.textContent = '继续';
+            } else {
+                intervalId = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateDisplay();
+                    } else {
+                        clearInterval(intervalId);
+                        playNotification();
+                        switchPhase();
+                        isRunning = false;
+                        startPauseBtn.textContent = '开始';
+                    }
+                }, 1000);
+                startPauseBtn.textContent = '暂停';
+            }
+            isRunning = !isRunning;
+        });
+
+        // 跳过当前阶段
+        skipBtn.addEventListener('click', () => {
+            if (isRunning) {
+                clearInterval(intervalId);
+                isRunning = false;
+                startPauseBtn.textContent = '开始';
+            }
+            switchPhase();
+        });
+
+        // 切换设置面板
+        toggleSettingsBtn.addEventListener('click', () => {
+            const isHidden = settingsPanel.style.display === 'none';
+            settingsPanel.style.display = isHidden ? 'block' : 'none';
+            toggleSettingsBtn.textContent = isHidden ? '隐藏设置' : '显示设置';
+        });
+
+        // 监听设置变化
+        document.querySelectorAll('.settings input').forEach(input => {
+            input.addEventListener('change', () => {
+                if (!isRunning) {
+                    if (isFocusTime) {
+                        timeLeft = getSettings().focusTime;
+                    } else {
+                        timeLeft = focusCount % getSettings().longBreakInterval === 0 ?
+                            getSettings().longBreakTime : getSettings().shortBreakTime;
+                    }
+                    updateDisplay();
+                }
+                updateColors();
+saveSettings(getSettings());
+            });
+        });
+
+        // 初始化显示
+        updateDisplay();
+    </script>
+</body>
+</html>
