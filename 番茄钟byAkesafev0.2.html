@@ -30,10 +30,22 @@
 
         .timer {
             font-size: 6rem;
-            margin: 2rem 0;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem; 
             font-weight: bold;
             font-feature-settings: "tnum";
             font-variant-numeric: tabular-nums;
+        }
+
+        /* 进度指示器样式 */
+        .progress-indicator {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            letter-spacing: 0.5rem;
+            opacity: 0.9;
+            transition: color 0.5s ease;
+            /* 确保符号垂直居中 */
+            line-height: 1;
         }
 
         .controls button {
@@ -44,8 +56,8 @@
             border-radius: 5px;
             cursor: pointer;
             background-color: rgba(255, 255, 255, 0.3);
-            color: inherit;
-            transition: background-color 0.3s, transform 0.1s;
+            color: rgba(0, 0, 0, 0.4);
+            transition: background-color 0.3s, transform 0.1s, opacity 0.3s;
         }
 
         .controls button:active {
@@ -55,6 +67,7 @@
         .controls button:hover {
             opacity: 0.9;
             background-color: rgba(255, 255, 255, 0.4);
+            color: rgba(0, 0, 0, 0.6);
         }
 
         .settings {
@@ -63,7 +76,7 @@
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 5px;
             background-color: rgba(255, 255, 255, 0.2);
-            color: inherit;
+            color: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(5px);
         }
 
@@ -73,7 +86,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 0;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         .settings label {
@@ -84,9 +97,10 @@
         .settings input {
             width: 100px;
             padding: 0.3rem;
-            border: 1px solid rgba(0,0,0,0.2);
+            border: 1px solid rgba(0,0,0,0.1);
             border-radius: 3px;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.6);
+            color: #333;
         }
 
         .settings input[type="color"] {
@@ -94,6 +108,8 @@
             height: 30px;
             padding: 0;
             cursor: pointer;
+            border: none;
+            background: none;
         }
 
         .settings input[type="checkbox"] {
@@ -107,10 +123,16 @@
             margin-top: 1rem;
             padding: 0.5rem 1rem;
             background-color: rgba(255, 255, 255, 0.3);
-            color: inherit;
+            color: rgba(0, 0, 0, 0.4);
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .toggle-settings:hover {
+             background-color: rgba(255, 255, 255, 0.4);
+             color: rgba(0, 0, 0, 0.6);
         }
 
         .phase-label {
@@ -134,6 +156,9 @@
     <div class="container">
         <div class="phase-label" id="phaseLabel">专注时间</div>
         <div class="timer" id="timer">25:00</div>
+        <!-- 进度圆点容器 -->
+        <div class="progress-indicator" id="progressIndicator"></div>
+        
         <div class="controls">
             <button id="startPause">开始</button>
             <button id="skip">跳过</button>
@@ -200,6 +225,7 @@
     <script>
         // DOM 元素
         const timerDisplay = document.getElementById('timer');
+        const progressIndicator = document.getElementById('progressIndicator');
         const startPauseBtn = document.getElementById('startPause');
         const skipBtn = document.getElementById('skip');
         const toggleSettingsBtn = document.getElementById('toggleSettings');
@@ -215,21 +241,14 @@
         let wakeLock = null;
         let timerEndTime = 0; 
 
-        // --- 音频处理开始 ---
+        // --- 音频处理 ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // 音符频率表 (Hz)
         const FREQUENCIES = {
-            'C3': 130.82,
-            'G3': 196.00,
-            'C4': 261.63,
-            'G4': 392.00,
-            'C5': 523.25,
-            'E5': 659.25,
-            'C6': 1046.50
+            'C3': 130.82, 'G3': 196.00, 'C4': 261.63, 'G4': 392.00,
+            'C5': 523.25, 'E5': 659.25, 'C6': 1046.50
         };
 
-        // 播放音符序列的通用函数
         function playNoteSequence(notes, durationPerNote) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
@@ -241,35 +260,32 @@
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
 
-                oscillator.type = 'sine'; // 使用正弦波，声音比较圆润
-                oscillator.frequency.value = FREQUENCIES[noteName];
+                const frequency = FREQUENCIES[noteName];
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
 
+                const volume = 1.5 / Math.pow(frequency, 0.25);
                 const startTime = now + (index * durationPerNote);
                 const endTime = startTime + durationPerNote;
 
-                // 音量包络：防止由于突然开始/停止产生的爆破音
-                // 快速淡入 -> 保持 -> 慢速淡出
                 gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.001); // Attack
-                gainNode.gain.exponentialRampToValueAtTime(0.001, endTime); // Decay/Release
+                gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.001); 
+                gainNode.gain.exponentialRampToValueAtTime(0.001, endTime); 
 
                 oscillator.start(startTime);
                 oscillator.stop(endTime);
             });
         }
 
-        // 专注结束时的提示音: 分解和弦 C4-G3, 每个 0.5s
         function playFocusEndSound() {
-            playNoteSequence(['C4', 'G3', 'C3'], 0.5);
+            playNoteSequence(['C5', 'G4', 'C4', 'C3'], 0.5);
         }
 
-        // 休息结束时的提示音: 分解和弦 C4-G4-E5-C5-C6, 每个 0.3s
         function playBreakEndSound() {
             playNoteSequence(['C4', 'G4', 'E5', 'C5', 'C6'], 0.15);
         }
-        // --- 音频处理结束 ---
 
-        // 屏幕常亮
+        // --- 屏幕常亮 ---
         async function requestWakeLock() {
             if ('wakeLock' in navigator) {
                 try {
@@ -293,7 +309,7 @@
             }
         });
 
-        // 设置管理
+        // --- 设置管理 ---
         function getSettings() {
             return {
                 focusTime: parseInt(document.getElementById('focusTime').value) * 60,
@@ -345,6 +361,41 @@
             document.title = `(${timeString}) ${phaseText} - 番茄钟`;
         }
 
+        // --- 修复后的进度指示器逻辑 ---
+        function updateProgressIndicator() {
+            const settings = getSettings();
+            const interval = settings.longBreakInterval;
+            
+            let currentIndex;
+
+            if (isFocusTime) {
+                // 专注状态下：focusCount 是当前已完成的次数（从0开始）
+                // 例如：第1轮开始 focusCount=0，显示第1个点(Index 0)
+                //      第4轮开始 focusCount=3，显示第4个点(Index 3)
+                //      第5轮开始 focusCount=4，显示第1个点(Index 0) -> 循环
+                currentIndex = focusCount % interval;
+            } else {
+                // 休息状态下：focusCount 已经 +1 了
+                // 例如：
+                // 第1轮专注结束，focusCount变为1，进入短休息。此时仍应高亮第1个点(Index 0)。
+                // 计算：(1 - 1) % 4 = 0。正确。
+                // 第4轮专注结束，focusCount变为4，进入长休息。此时应高亮第4个点(Index 3)。
+                // 计算：(4 - 1) % 4 = 3。正确。
+                if (focusCount === 0) currentIndex = 0; // 防御性编程，理论上不会走到这
+                else currentIndex = (focusCount - 1) % interval;
+            }
+
+            let html = '';
+            for (let i = 0; i < interval; i++) {
+                if (i === currentIndex) {
+                    html += '●'; 
+                } else {
+                    html += '○';
+                }
+            }
+            progressIndicator.textContent = html;
+        }
+
         function updateColors() {
             const settings = getSettings();
             if (isFocusTime) {
@@ -363,7 +414,7 @@
             const settings = getSettings();
             
             if (isFocusTime) {
-                focusCount++;
+                focusCount++; // 专注结束，计数+1
                 isFocusTime = false;
                 timeLeft = (focusCount % settings.longBreakInterval === 0) ? 
                     settings.longBreakTime : settings.shortBreakTime;
@@ -373,6 +424,7 @@
             }
 
             updateColors();
+            updateProgressIndicator(); // 状态改变，重新计算圆点
             updateDisplay();
 
             const shouldAutoStart = isFocusTime ? settings.autoStartFocus : settings.autoStartBreak;
@@ -407,11 +459,10 @@
                         updateDisplay();
                         
                         const s = getSettings();
-                        // 修改这里：根据当前结束的状态播放不同的声音
                         if (isFocusTime && s.playSoundFocusEnd) {
-                            playFocusEndSound(); // 专注结束
+                            playFocusEndSound();
                         } else if (!isFocusTime && s.playSoundBreakEnd) {
-                            playBreakEndSound(); // 休息结束
+                            playBreakEndSound();
                         }
 
                         switchPhase();
@@ -432,6 +483,13 @@
         startPauseBtn.addEventListener('click', () => toggleTimer());
 
         skipBtn.addEventListener('click', () => {
+            const s = getSettings();
+            if (isFocusTime && s.playSoundFocusEnd) {
+                playFocusEndSound();
+            } else if (!isFocusTime && s.playSoundBreakEnd) {
+                playBreakEndSound();
+            }
+
             switchPhase();
         });
 
@@ -445,6 +503,15 @@
             input.addEventListener('change', (e) => {
                 saveSettings();
                 updateColors();
+                updateProgressIndicator(); 
+
+                // 试听
+                if (e.target.id === 'playSoundFocusEnd' && e.target.checked) {
+                    playFocusEndSound();
+                }
+                if (e.target.id === 'playSoundBreakEnd' && e.target.checked) {
+                    playBreakEndSound();
+                }
 
                 if (!isRunning) {
                     const settings = getSettings();
@@ -482,6 +549,7 @@
         }
         
         updateColors();
+        updateProgressIndicator(); 
         updateDisplay();
     </script>
 </body>
