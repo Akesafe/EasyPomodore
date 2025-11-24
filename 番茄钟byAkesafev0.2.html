@@ -17,7 +17,7 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.5s ease, color 0.5s ease;
             padding: 20px;
         }
 
@@ -32,6 +32,8 @@
             font-size: 6rem;
             margin: 2rem 0;
             font-weight: bold;
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
         }
 
         .controls button {
@@ -41,49 +43,71 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            background-color: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
-            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
-            transition: background-color 0.3s;
+            background-color: rgba(255, 255, 255, 0.3);
+            color: inherit;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .controls button:active {
+            transform: scale(0.98);
         }
 
         .controls button:hover {
             opacity: 0.9;
+            background-color: rgba(255, 255, 255, 0.4);
         }
 
         .settings {
             margin-top: 2rem;
             padding: 1.5rem;
-            border: 1px solid #ccc;
+            border: 1px solid rgba(0,0,0,0.1);
             border-radius: 5px;
-            background-color: rgba(255, 255, 255, 0.2); /* 半透明白色背景 */
-            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
+            background-color: rgba(255, 255, 255, 0.2);
+            color: inherit;
+            backdrop-filter: blur(5px);
         }
 
-        .settings div {
+        .settings div.setting-item {
             margin: 1rem 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .settings label {
+            flex-grow: 1;
+            text-align: left;
         }
 
         .settings input {
             width: 100px;
             padding: 0.3rem;
-            border: 1px solid #ccc;
+            border: 1px solid rgba(0,0,0,0.2);
             border-radius: 3px;
+            background: rgba(255,255,255,0.8);
         }
 
         .settings input[type="color"] {
             width: 50px;
             height: 30px;
             padding: 0;
+            cursor: pointer;
+        }
+
+        .settings input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-left: 10px;
+            cursor: pointer;
         }
 
         .toggle-settings {
             margin-top: 1rem;
             padding: 0.5rem 1rem;
-            background-color: rgba(255, 255, 255, 0.3); /* 半透明白色背景 */
-            color: rgba(0, 0, 0, 0.4); /* 半透明深色文字 */
+            background-color: rgba(255, 255, 255, 0.3);
+            color: inherit;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -92,57 +116,90 @@
         .phase-label {
             font-size: 1.2rem;
             margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+
+        .footer-text {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-size: 0.8rem;
+            opacity: 0.6;
+            text-align: center;
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="phase-label" id="phaseLabel">专注时间</div>
-        <div class="timer" id="timer">13:00</div>
+        <div class="timer" id="timer">25:00</div>
         <div class="controls">
             <button id="startPause">开始</button>
             <button id="skip">跳过</button>
         </div>
         <button class="toggle-settings" id="toggleSettings">显示设置</button>
+        
         <div class="settings" id="settings" style="display: none;">
-            <div>
+            <div class="setting-item">
                 <label>专注时间 (分钟):</label>
                 <input type="number" id="focusTime" value="25" min="1">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>短休息时长 (分钟):</label>
                 <input type="number" id="shortBreakTime" value="5" min="1">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>长休息时长 (分钟):</label>
                 <input type="number" id="longBreakTime" value="15" min="1">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>长休息间隔 (次数):</label>
                 <input type="number" id="longBreakInterval" value="4" min="1">
             </div>
-            <div>
+            
+            <div class="setting-item">
+                <label>自动开始专注:</label>
+                <input type="checkbox" id="autoStartFocus">
+            </div>
+            <div class="setting-item">
+                <label>自动开始休息:</label>
+                <input type="checkbox" id="autoStartBreak">
+            </div>
+            <div class="setting-item">
+                <label>专注结束时播放提示音:</label>
+                <input type="checkbox" id="playSoundFocusEnd" checked>
+            </div>
+            <div class="setting-item">
+                <label>休息结束时播放提示音:</label>
+                <input type="checkbox" id="playSoundBreakEnd" checked>
+            </div>
+
+            <div class="setting-item">
                 <label>专注时字体颜色:</label>
                 <input type="color" id="focusTextColor" value="#000000">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>专注时背景颜色:</label>
                 <input type="color" id="focusBackColor" value="#8DCDEC">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>休息时字体颜色:</label>
                 <input type="color" id="breakTextColor" value="#404040">
             </div>
-            <div>
+            <div class="setting-item">
                 <label>休息时背景颜色:</label>
                 <input type="color" id="breakBackColor" value="#B1ECB8">
+            </div>
+            <div class="footer-text">
+                Powered by Akesafe. v2025.11.24
             </div>
         </div>
     </div>
 
     <script>
         // DOM 元素
-        const timer = document.getElementById('timer');
+        const timerDisplay = document.getElementById('timer');
         const startPauseBtn = document.getElementById('startPause');
         const skipBtn = document.getElementById('skip');
         const toggleSettingsBtn = document.getElementById('toggleSettings');
@@ -150,75 +207,93 @@
         const phaseLabel = document.getElementById('phaseLabel');
 
         // 状态变量
-        let timeLeft = 25 * 60; // 默认13分钟
+        let timeLeft = 25 * 60;
         let isRunning = false;
-        let isFocusTime = true;
+        let isFocusTime = true; // true=focus, false=break
         let intervalId = null;
         let focusCount = 0;
-
         let wakeLock = null;
+        let timerEndTime = 0; 
 
-// 请求屏幕常亮
-async function requestWakeLock() {
-    try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        console.log('屏幕常亮已启用');
-    } catch (err) {
-        console.error(`请求屏幕常亮失败: ${err.name}, ${err.message}`);
-    }
-}
+        // --- 音频处理开始 ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 音符频率表 (Hz)
+        const FREQUENCIES = {
+            'C3': 130.82,
+            'G3': 196.00,
+            'C4': 261.63,
+            'G4': 392.00,
+            'C5': 523.25,
+            'E5': 659.25,
+            'C6': 1046.50
+        };
 
-// 释放屏幕常亮
-function releaseWakeLock() {
-    if (wakeLock !== null) {
-        wakeLock.release().then(() => {
-            console.log('屏幕常亮已释放');
-            wakeLock = null;
+        // 播放音符序列的通用函数
+        function playNoteSequence(notes, durationPerNote) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+
+            notes.forEach((noteName, index) => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.type = 'sine'; // 使用正弦波，声音比较圆润
+                oscillator.frequency.value = FREQUENCIES[noteName];
+
+                const startTime = now + (index * durationPerNote);
+                const endTime = startTime + durationPerNote;
+
+                // 音量包络：防止由于突然开始/停止产生的爆破音
+                // 快速淡入 -> 保持 -> 慢速淡出
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.001); // Attack
+                gainNode.gain.exponentialRampToValueAtTime(0.001, endTime); // Decay/Release
+
+                oscillator.start(startTime);
+                oscillator.stop(endTime);
+            });
+        }
+
+        // 专注结束时的提示音: 分解和弦 C4-G3, 每个 0.5s
+        function playFocusEndSound() {
+            playNoteSequence(['C4', 'G3', 'C3'], 0.5);
+        }
+
+        // 休息结束时的提示音: 分解和弦 C4-G4-E5-C5-C6, 每个 0.3s
+        function playBreakEndSound() {
+            playNoteSequence(['C4', 'G4', 'E5', 'C5', 'C6'], 0.15);
+        }
+        // --- 音频处理结束 ---
+
+        // 屏幕常亮
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                } catch (err) {
+                    console.error('Wake Lock Error:', err);
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
         });
-    }
-}
 
-// 添加事件监听器确保在页面加载时启用屏幕常亮
-document.addEventListener('visibilitychange', () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        requestWakeLock();
-    }
-});
-
-// 在开始计时器时启用屏幕常亮
-startPauseBtn.addEventListener('click', () => {
-    if (!isRunning) {
-        requestWakeLock();
-    } else {
-        releaseWakeLock();
-    }
-});
-
-function loadSettings() {
-    const savedSettings = localStorage.getItem('pomodoroSettings');
-    if (savedSettings) {
-        const settings = JSON.parse(savedSettings);
-        document.getElementById('focusTime').value = settings.focusTime / 60;
-        document.getElementById('shortBreakTime').value = settings.shortBreakTime / 60;
-        document.getElementById('longBreakTime').value = settings.longBreakTime / 60;
-        document.getElementById('longBreakInterval').value = settings.longBreakInterval;
-        document.getElementById('focusTextColor').value = settings.focusTextColor;
-        document.getElementById('focusBackColor').value = settings.focusBackColor;
-        document.getElementById('breakTextColor').value = settings.breakTextColor;
-        document.getElementById('breakBackColor').value = settings.breakBackColor;
-
-        timeLeft = isFocusTime ? settings.focusTime : settings.shortBreakTime;
-    } else {
-        timeLeft = 25 * 60;
-    }
-}
-
-
-function saveSettings(settings) {
-    localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
-}
-
-        // 获取设置值
+        // 设置管理
         function getSettings() {
             return {
                 focusTime: parseInt(document.getElementById('focusTime').value) * 60,
@@ -228,20 +303,48 @@ function saveSettings(settings) {
                 focusTextColor: document.getElementById('focusTextColor').value,
                 focusBackColor: document.getElementById('focusBackColor').value,
                 breakTextColor: document.getElementById('breakTextColor').value,
-                breakBackColor: document.getElementById('breakBackColor').value
+                breakBackColor: document.getElementById('breakBackColor').value,
+                autoStartFocus: document.getElementById('autoStartFocus').checked,
+                autoStartBreak: document.getElementById('autoStartBreak').checked,
+                playSoundFocusEnd: document.getElementById('playSoundFocusEnd').checked,
+                playSoundBreakEnd: document.getElementById('playSoundBreakEnd').checked
             };
-    saveSettings(settings); // 保存设置
-    return settings;
         }
 
-        // 更新显示的时间
+        function saveSettings() {
+            const settings = getSettings();
+            localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('pomodoroSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                document.getElementById('focusTime').value = settings.focusTime / 60;
+                document.getElementById('shortBreakTime').value = settings.shortBreakTime / 60;
+                document.getElementById('longBreakTime').value = settings.longBreakTime / 60;
+                document.getElementById('longBreakInterval').value = settings.longBreakInterval;
+                document.getElementById('focusTextColor').value = settings.focusTextColor;
+                document.getElementById('focusBackColor').value = settings.focusBackColor;
+                document.getElementById('breakTextColor').value = settings.breakTextColor;
+                document.getElementById('breakBackColor').value = settings.breakBackColor;                
+                document.getElementById('autoStartFocus').checked = settings.autoStartFocus;
+                document.getElementById('autoStartBreak').checked = settings.autoStartBreak;
+                document.getElementById('playSoundFocusEnd').checked = settings.playSoundFocusEnd;
+                document.getElementById('playSoundBreakEnd').checked = settings.playSoundBreakEnd;
+            }
+        }
+
         function updateDisplay() {
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;
-            timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timerDisplay.textContent = timeString;
+            
+            const phaseText = isFocusTime ? "专注" : "休息";
+            document.title = `(${timeString}) ${phaseText} - 番茄钟`;
         }
 
-        // 更新颜色和标签
         function updateColors() {
             const settings = getSettings();
             if (isFocusTime) {
@@ -251,99 +354,134 @@ function saveSettings(settings) {
             } else {
                 document.body.style.backgroundColor = settings.breakBackColor;
                 document.body.style.color = settings.breakTextColor;
-                phaseLabel.textContent = focusCount % settings.longBreakInterval === 0 ? 
-                    "长休息时间" : "短休息时间";
+                const isLongBreak = focusCount > 0 && focusCount % settings.longBreakInterval === 0;
+                phaseLabel.textContent = isLongBreak ? "长休息时间" : "短休息时间";
             }
         }
 
-        // 切换到下一个阶段
         function switchPhase() {
             const settings = getSettings();
+            
             if (isFocusTime) {
                 focusCount++;
                 isFocusTime = false;
-                if (focusCount % settings.longBreakInterval === 0) {
-                    timeLeft = settings.longBreakTime;
-                } else {
-                    timeLeft = settings.shortBreakTime;
-                }
+                timeLeft = (focusCount % settings.longBreakInterval === 0) ? 
+                    settings.longBreakTime : settings.shortBreakTime;
             } else {
                 isFocusTime = true;
                 timeLeft = settings.focusTime;
             }
+
             updateColors();
             updateDisplay();
-        }
 
-        // 播放提示音
-        function playNotification() {
-            const audio = new Audio('data:audio/wav;base64,UklGRl4DAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAAABmYWN0BAAAAAAAAABkYXRhRAMAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==');
-            audio.play();
-        }
-
-loadSettings();
-
-        // 初始化颜色
-        updateColors();
-
-        // 开始/暂停计时器
-        startPauseBtn.addEventListener('click', () => {
-            if (isRunning) {
-                clearInterval(intervalId);
-                startPauseBtn.textContent = '继续';
+            const shouldAutoStart = isFocusTime ? settings.autoStartFocus : settings.autoStartBreak;
+            
+            if (shouldAutoStart) {
+                if (!isRunning) {
+                    toggleTimer(true);
+                } else {
+                    timerEndTime = Date.now() + timeLeft * 1000;
+                }
             } else {
-                intervalId = setInterval(() => {
-                    if (timeLeft > 0) {
-                        timeLeft--;
-                        updateDisplay();
-                    } else {
-                        clearInterval(intervalId);
-                        playNotification();
-                        switchPhase();
-                        isRunning = false;
-                        startPauseBtn.textContent = '开始';
-                    }
-                }, 1000);
-                startPauseBtn.textContent = '暂停';
+                if (isRunning) toggleTimer(false);
             }
-            isRunning = !isRunning;
-        });
+        }
 
-        // 跳过当前阶段
-        skipBtn.addEventListener('click', () => {
-            if (isRunning) {
-                clearInterval(intervalId);
+        function toggleTimer(forceState = null) {
+            const shouldStart = forceState !== null ? forceState : !isRunning;
+
+            if (shouldStart) {
+                isRunning = true;
+                startPauseBtn.textContent = '暂停';
+                timerEndTime = Date.now() + timeLeft * 1000;
+                requestWakeLock();
+                
+                if (intervalId) clearInterval(intervalId);
+                intervalId = setInterval(() => {
+                    const now = Date.now();
+                    const remaining = Math.ceil((timerEndTime - now) / 1000);
+                    
+                    if (remaining <= 0) {
+                        timeLeft = 0;
+                        updateDisplay();
+                        
+                        const s = getSettings();
+                        // 修改这里：根据当前结束的状态播放不同的声音
+                        if (isFocusTime && s.playSoundFocusEnd) {
+                            playFocusEndSound(); // 专注结束
+                        } else if (!isFocusTime && s.playSoundBreakEnd) {
+                            playBreakEndSound(); // 休息结束
+                        }
+
+                        switchPhase();
+                    } else {
+                        timeLeft = remaining;
+                        updateDisplay();
+                    }
+                }, 200);
+            } else {
                 isRunning = false;
                 startPauseBtn.textContent = '开始';
+                clearInterval(intervalId);
+                releaseWakeLock();
             }
+        }
+
+        // 事件监听
+        startPauseBtn.addEventListener('click', () => toggleTimer());
+
+        skipBtn.addEventListener('click', () => {
             switchPhase();
         });
 
-        // 切换设置面板
         toggleSettingsBtn.addEventListener('click', () => {
             const isHidden = settingsPanel.style.display === 'none';
             settingsPanel.style.display = isHidden ? 'block' : 'none';
             toggleSettingsBtn.textContent = isHidden ? '隐藏设置' : '显示设置';
         });
 
-        // 监听设置变化
         document.querySelectorAll('.settings input').forEach(input => {
-            input.addEventListener('change', () => {
-                if (!isRunning) {
-                    if (isFocusTime) {
-                        timeLeft = getSettings().focusTime;
-                    } else {
-                        timeLeft = focusCount % getSettings().longBreakInterval === 0 ?
-                            getSettings().longBreakTime : getSettings().shortBreakTime;
-                    }
-                    updateDisplay();
-                }
+            input.addEventListener('change', (e) => {
+                saveSettings();
                 updateColors();
-saveSettings(getSettings());
+
+                if (!isRunning) {
+                    const settings = getSettings();
+                    const changedId = e.target.id;
+                    let shouldUpdateTimer = false;
+
+                    if (isFocusTime) {
+                        if (changedId === 'focusTime') shouldUpdateTimer = true;
+                    } else {
+                        const isLongBreak = focusCount > 0 && focusCount % settings.longBreakInterval === 0;
+                        if (isLongBreak && changedId === 'longBreakTime') shouldUpdateTimer = true;
+                        if (!isLongBreak && changedId === 'shortBreakTime') shouldUpdateTimer = true;
+                    }
+
+                    if (shouldUpdateTimer) {
+                        if (isFocusTime) timeLeft = settings.focusTime;
+                        else {
+                             timeLeft = (focusCount > 0 && focusCount % settings.longBreakInterval === 0) 
+                                ? settings.longBreakTime 
+                                : settings.shortBreakTime;
+                        }
+                        updateDisplay();
+                    }
+                }
             });
         });
 
-        // 初始化显示
+        // 初始化
+        loadSettings();
+        if (!localStorage.getItem('pomodoroSettings')) {
+            timeLeft = 25 * 60;
+        } else {
+            const s = getSettings();
+            timeLeft = s.focusTime; 
+        }
+        
+        updateColors();
         updateDisplay();
     </script>
 </body>
